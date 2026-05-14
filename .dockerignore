@@ -1,7 +1,11 @@
-target/
-.git/
-.github/
+node_modules
+dist
+coverage
+.git
+.github
 .gitignore
 .dockerignore
 docker-compose.yml
 *.md
+*.log
+newrelic_agent.log

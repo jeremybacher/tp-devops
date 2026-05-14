@@ -1,18 +1,26 @@
-FROM rust:1.80-slim AS builder
+ARG NODE_VERSION=22-bookworm-slim
 
+FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
 
-COPY Cargo.toml Cargo.lock ./
-
-RUN mkdir src \
-    && echo 'fn main(){}' > src/main.rs \
-    && cargo build --release \
-    && rm -rf src
-
+FROM node:${NODE_VERSION} AS build
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml .npmrc tsconfig.json ./
+COPY --from=deps /app/node_modules ./node_modules
 COPY src ./src
-RUN touch src/main.rs && cargo build --release
+RUN pnpm build
 
-FROM debian:bookworm-slim AS runtime
+FROM node:${NODE_VERSION} AS prod-deps
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile --prod
+
+FROM node:${NODE_VERSION} AS runtime
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
@@ -21,13 +29,19 @@ RUN apt-get update \
 RUN useradd --system --no-create-home --shell /usr/sbin/nologin app
 
 WORKDIR /app
-COPY --from=builder /app/target/release/tp-devops /app/tp-devops
+
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json newrelic.js ./
 
 USER app
+
+ENV NODE_ENV=production \
+    APP_PORT=8080
 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -fsS http://localhost:8080/ping || exit 1
 
-CMD ["./tp-devops"]
+CMD ["node", "-r", "newrelic", "dist/main.js"]

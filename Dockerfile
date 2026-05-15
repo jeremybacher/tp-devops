@@ -1,4 +1,3 @@
-
 FROM node:22 AS build
 WORKDIR /app
 RUN corepack enable

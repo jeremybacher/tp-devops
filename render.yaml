@@ -1,0 +1,10 @@
+services:
+  - name: tp-devops
+    type: web
+    runtime: image
+    image:
+      url: ghcr.io/jeremybacher/tp-devops:0.1.0
+    healthCheckPath: /ping
+    envVars:
+      - key: APP_PORT
+        value: 8080

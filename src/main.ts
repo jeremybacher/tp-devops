@@ -2,7 +2,7 @@ import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
   const app = await buildApp();
-  const port = Number(process.env.APP_PORT ?? 8080);
+  const port = Number(process.env.APP_PORT ?? process.env.PORT ?? 8080);
 
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, 'shutting down');
